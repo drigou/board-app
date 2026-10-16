@@ -3,3 +3,6 @@ build/
 .svelte-kit/
 data/
 .env
+
+certs/*.crt
+certs/*.pem

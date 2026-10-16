@@ -30,7 +30,15 @@ docker run --rm --network host node:22-alpine sh -c "wget -qO- https://registry.
 
 - No output / timeout → Docker has no internet inside containers (DNS, VPN or corporate proxy).
   Try restarting Docker / WSL (`wsl --shutdown` from Windows), and disconnect from VPN while building.
-- Certificate error → a corporate proxy inspects HTTPS; npm needs that company root certificate.
+- Certificate error → a corporate proxy inspects HTTPS (common on work laptops). Put the company
+  root certificate in `certs/` and build again:
+  1. In Windows, press Win+R → `certmgr.msc` → *Trusted Root Certification Authorities* → *Certificates*.
+  2. Find your company's / proxy's root (e.g. "Zscaler Root CA", or your company name).
+  3. Right-click → *All Tasks* → *Export…* → **Base-64 encoded X.509 (.CER)**.
+  4. Copy it into the repo: `cp /mnt/c/Users/<you>/Downloads/<file>.cer certs/company-root.crt`
+  5. `docker compose build --no-cache app && docker compose up -d`
+
+  The build log shows `Extra CA certificates: 1` when it's picked up.
 
 ## Develop
 
