@@ -70,6 +70,7 @@ Rules worth knowing:
 - `key` is `"PK"`, `"FK"` or `"PK+FK"` (or use `"pk": true` / `"fk": true`).
 - Relations are `"table.column"` on the same page; cardinality defaults to many (`from`) to one (`to`).
   Short forms `1`, `0..1`, `1..*`, `0..*` work too.
+- Optional per table: `"color": "#dbeafe"` (heading), `"width": 400`, `"nameWidth": 0.6` (name column share).
 - Tables without `x`/`y` are laid out automatically; the page gets the smallest paper size that fits.
 - Several pages: `{ "pages": [ { "page": "…", "tables": […] }, … ] }` (always imported as new pages).
 - Importing into an existing page with tables of the same name asks: skip, replace or add copies.
@@ -96,6 +97,9 @@ For local dev, expose the database by adding `ports: ["127.0.0.1:5432:5432"]` to
 | Rename page / table / board | Double-click the name (boards also have ✏️) |
 | Add table | Table tool in the left bar, then click on a page (`Esc` cancels) |
 | Add / delete a row | `+` under the table / `×` on hover |
+| Heading colour | Select table(s), click the colour dot in the heading |
+| Table width | Select the table, drag just outside its left or right side |
+| Name / datatype column width | Drag the divider between the two columns |
 | Set key | Click the key cell: none → PK → FK → PK+FK |
 | Draw a relation | Drag from a dot on a row's left/right edge to another row on the same page |
 | Cardinality | Click a relation; pick each end at the bottom |

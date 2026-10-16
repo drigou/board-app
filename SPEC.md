@@ -15,6 +15,9 @@ A web app for designing logical data models on boards. Single user, runs locally
   2. **Name**
   3. **Datatype** (free text — conceptual, logical or physical, up to you).
   Rows are added with a `+` button and can be deleted.
+  Tables have a heading colour (palette of 12 or any colour; default gray; text turns white on dark
+  colours), a width (drag the sides, min 200 px) and a name/datatype split (drag the divider; kept
+  proportionally when the width changes).
 - **Relation**: an angular (orthogonal) line drawn by hand from one row to another row
   **on the same page** (self-references allowed). Each end has crow's foot cardinality:
   one, zero-or-one, one-or-many, zero-or-many. New relations default to many-to-one.

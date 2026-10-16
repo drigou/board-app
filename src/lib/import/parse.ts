@@ -10,6 +10,9 @@ export interface ImportTable {
 	name: string;
 	x?: number;
 	y?: number;
+	color?: string;
+	width?: number;
+	nameWidth?: number;
 	columns: ImportColumn[];
 }
 export interface ColumnRef {
@@ -154,7 +157,9 @@ export function parseImport(text: string): ParseResult {
 			return undefined;
 		}
 		allowOnly(v, path, ['name', 'type', 'key', 'pk', 'fk']);
-		const name = str(v, 'name', path, true);
+		// Column names may be empty (rows that haven't been named yet), but must be present.
+		const name = str(v, 'name', path, false);
+		if (v.name === undefined) errors.push(`${path}: "name" is required`);
 		const type = str(v, 'type', path, false) ?? '';
 		let key: KeyKind = '';
 		if (v.key !== undefined) {
@@ -170,7 +175,7 @@ export function parseImport(text: string): ParseResult {
 			const fk = v.fk === true || key.includes('FK');
 			key = pk && fk ? 'PK+FK' : pk ? 'PK' : 'FK';
 		}
-		return name ? { name, type, key } : undefined;
+		return name !== undefined ? { name, type, key } : undefined;
 	}
 
 	function table(v: unknown, path: string): ImportTable | undefined {
@@ -178,15 +183,30 @@ export function parseImport(text: string): ParseResult {
 			errors.push(`${path}: must be an object`);
 			return undefined;
 		}
-		allowOnly(v, path, ['name', 'x', 'y', 'columns']);
+		allowOnly(v, path, ['name', 'x', 'y', 'color', 'width', 'nameWidth', 'columns']);
 		const name = str(v, 'name', path, true);
 		const x = num(v, 'x', path);
 		const y = num(v, 'y', path);
+		let color = str(v, 'color', path, false);
+		if (color !== undefined && !/^#[0-9a-f]{6}$/i.test(color)) {
+			errors.push(`${path}.color: must look like "#dbeafe", got ${show(v.color)}`);
+			color = undefined;
+		}
+		let width = num(v, 'width', path);
+		if (width !== undefined && width < 200) {
+			errors.push(`${path}.width: must be at least 200`);
+			width = undefined;
+		}
+		let nameWidth = num(v, 'nameWidth', path);
+		if (nameWidth !== undefined && (nameWidth < 0.1 || nameWidth > 0.9)) {
+			errors.push(`${path}.nameWidth: must be between 0.1 and 0.9`);
+			nameWidth = undefined;
+		}
 		if ((x === undefined) !== (y === undefined)) errors.push(`${path}: give both "x" and "y", or neither`);
 		const columns = arr(v, 'columns', path, true)
 			.map((c, i) => column(c, `${path}.columns[${i}]`))
 			.filter((c): c is ImportColumn => !!c);
-		return name ? { name, x, y, columns } : undefined;
+		return name ? { name, x, y, color: color?.toLowerCase(), width, nameWidth, columns } : undefined;
 	}
 
 	function relation(v: unknown, path: string): ImportRelation | undefined {

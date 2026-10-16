@@ -26,6 +26,12 @@ export interface TableDoc {
 	y: number;
 	title: string;
 	rows: Row[];
+	/** Heading colour (#rrggbb); missing = default gray. */
+	color?: string;
+	/** Table width in px; missing = 320. */
+	width?: number;
+	/** Share of the name column in the name+datatype space (0.1–0.9); missing = 0.5. */
+	nameWidth?: number;
 }
 
 export interface RelationDoc {

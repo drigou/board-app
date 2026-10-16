@@ -30,7 +30,10 @@ export function paperLabel(width: number, height: number) {
 export type Tool = 'select' | 'hand' | 'table';
 
 export type PageData = { title: string };
-export type TableData = { title: string; rows: Row[] };
+export type TableData = { title: string; rows: Row[]; color?: string; nameWidth?: number };
+
+export const TABLE_W = 320;
+export const TABLE_MIN_W = 200;
 export type RelationData = { sourceCard: Cardinality; targetCard: Cardinality };
 
 export type PageNode = Node<PageData, 'page'>;
@@ -63,7 +66,8 @@ function toNodes(content: BoardContent): BoardNode[] {
 			parentId: t.pageId,
 			extent: 'parent',
 			position: { x: t.x, y: t.y },
-			data: { title: t.title, rows: t.rows },
+			width: t.width ?? TABLE_W,
+			data: { title: t.title, rows: t.rows, color: t.color, nameWidth: t.nameWidth },
 			dragHandle: '.table-drag',
 			zIndex: 1
 		}));
@@ -146,7 +150,10 @@ export class Editor {
 					x: n.position.x,
 					y: n.position.y,
 					title: n.data.title,
-					rows: n.data.rows
+					rows: n.data.rows,
+					...(n.data.color ? { color: n.data.color } : {}),
+					...(n.width && n.width !== TABLE_W ? { width: Math.round(n.width) } : {}),
+					...(n.data.nameWidth !== undefined && n.data.nameWidth !== 0.5 ? { nameWidth: n.data.nameWidth } : {})
 				});
 			}
 		}
@@ -316,7 +323,8 @@ export class Editor {
 			parentId: t.pageId,
 			extent: 'parent',
 			position: { x: t.x, y: t.y },
-			data: { title: t.title, rows: t.rows },
+			width: t.width ?? TABLE_W,
+			data: { title: t.title, rows: t.rows, color: t.color, nameWidth: t.nameWidth },
 			dragHandle: '.table-drag',
 			zIndex: 1,
 			selected: true
@@ -348,6 +356,7 @@ export class Editor {
 			parentId: pageId,
 			extent: 'parent',
 			position: at ?? { x: 40 + offset, y: 40 + offset },
+			width: TABLE_W,
 			data: { title: 'new_table', rows: [{ id: uid(), key: 'PK', name: 'id', type: 'integer' }] },
 			dragHandle: '.table-drag',
 			zIndex: 1,
@@ -356,6 +365,19 @@ export class Editor {
 		this.nodes = [...this.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)), table];
 		this.commit();
 		return table;
+	}
+
+	/** Set the heading colour of tables (undefined = default gray). */
+	setTablesColor(ids: string[], color: string | undefined) {
+		const set = new Set(ids);
+		this.nodes = this.nodes.map((n) =>
+			set.has(n.id) && n.type === 'table' ? { ...n, data: { ...n.data, color } } : n
+		);
+		this.commit();
+	}
+
+	setNameWidth(id: string, nameWidth: number) {
+		this.#updateData(id, (d: TableData) => ({ ...d, nameWidth: Math.round(nameWidth * 100) / 100 }));
 	}
 
 	renameTable(id: string, title: string) {

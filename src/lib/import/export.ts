@@ -43,6 +43,9 @@ function exportPage(board: BoardContent, page: PageDoc) {
 			name: names.get(t.id)!,
 			x: Math.round(t.x),
 			y: Math.round(t.y),
+			...(t.color ? { color: t.color } : {}),
+			...(t.width ? { width: t.width } : {}),
+			...(t.nameWidth !== undefined ? { nameWidth: t.nameWidth } : {}),
 			columns: t.rows.map((r) => ({ name: r.name, ...(r.type ? { type: r.type } : {}), ...(r.key ? { key: r.key } : {}) }))
 		})),
 		relations

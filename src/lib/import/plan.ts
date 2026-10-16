@@ -1,10 +1,9 @@
 import dagre from '@dagrejs/dagre';
-import { PAGE_H, PAGE_W, PAPER_SIZES } from '$lib/editor/editor.svelte';
+import { PAGE_H, PAGE_W, PAPER_SIZES, TABLE_W } from '$lib/editor/editor.svelte';
 import type { BoardContent, RelationDoc, Row, TableDoc } from '$lib/types';
 import type { ColumnRef, ImportPage, ImportTable } from './parse';
 
-/** Table figure size, used for layout before the browser has measured anything. */
-export const TABLE_W = 320;
+/** Table figure height, used for layout before the browser has measured anything. */
 export const tableHeight = (rows: number) => 60 + rows * 28;
 
 const MARGIN = 40;
@@ -52,7 +51,7 @@ function layout(tables: ImportTable[], links: [string, string][]) {
 	const g = new dagre.graphlib.Graph();
 	g.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 90, marginx: 0, marginy: 0 });
 	g.setDefaultEdgeLabel(() => ({}));
-	for (const t of tables) g.setNode(t.name, { width: TABLE_W, height: tableHeight(t.columns.length) });
+	for (const t of tables) g.setNode(t.name, { width: t.width ?? TABLE_W, height: tableHeight(t.columns.length) });
 	for (const [a, b] of links) if (g.hasNode(a) && g.hasNode(b) && a !== b) g.setEdge(a, b);
 	dagre.layout(g);
 	const pos = new Map<string, { x: number; y: number }>();
@@ -114,7 +113,17 @@ export function planImport(
 			takenNames.add(title);
 			const rows: Row[] = src.columns.map((c) => ({ id: uid(), key: c.key, name: c.name, type: c.type }));
 			const at = src.x !== undefined && src.y !== undefined ? { x: src.x, y: src.y } : keepAt;
-			const doc: TableDoc = { id: uid(), pageId, x: at?.x ?? NaN, y: at?.y ?? NaN, title, rows };
+			const doc: TableDoc = {
+				id: uid(),
+				pageId,
+				x: at?.x ?? NaN,
+				y: at?.y ?? NaN,
+				title,
+				rows,
+				...(src.color ? { color: src.color } : {}),
+				...(src.width ? { width: src.width } : {}),
+				...(src.nameWidth !== undefined ? { nameWidth: src.nameWidth } : {})
+			};
 			byName.set(src.name, doc);
 			placed.push({ doc, src });
 		}
@@ -171,7 +180,8 @@ export function planImport(
 
 		// Relations: connect the facing sides of the two tables.
 		for (const { from, to, rel } of links) {
-			const fromLeft = from.table.x + TABLE_W / 2 <= to.table.x + TABLE_W / 2;
+			const center = (t: TableDoc) => t.x + (t.width ?? TABLE_W) / 2;
+			const fromLeft = center(from.table) <= center(to.table);
 			const self = from.table === to.table;
 			plan.relations.push({
 				id: uid(),
@@ -186,7 +196,7 @@ export function planImport(
 
 		// Page size: fit everything on it.
 		const all = [...existing.filter((t) => !removed.has(t.id)), ...placed.map((p) => p.doc)];
-		const needW = Math.max(0, ...all.map((t) => t.x + TABLE_W)) + MARGIN;
+		const needW = Math.max(0, ...all.map((t) => t.x + (t.width ?? TABLE_W))) + MARGIN;
 		const needH = Math.max(0, ...all.map((t) => t.y + tableHeight(t.rows.length))) + MARGIN;
 		if (existingPage) {
 			const w = existingPage.width ?? PAGE_W;
