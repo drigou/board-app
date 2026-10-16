@@ -1,0 +1,73 @@
+:root {
+	--bg: #f4f5f7;
+	--sidebar: #fafafb;
+	--surface: #ffffff;
+	--page: #ffffff;
+	--page-border: #d6d9de;
+	--border: #e1e4e8;
+	--text: #1f2328;
+	--muted: #6e7781;
+	--accent: #2f6fde;
+	--danger: #cf222e;
+	--pk: #b7791f;
+	--fk: #2f6fde;
+	--edge: #57606a;
+	--table-border: #8c959f;
+	--table-head: #eef1f5;
+	--row-border: #eaecef;
+	--focus-bg: #f0f3f7;
+	color-scheme: light;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+	background: var(--bg);
+	color: var(--text);
+	font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	font-size: 14px;
+}
+
+button {
+	font: inherit;
+	color: var(--text);
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 4px 10px;
+	cursor: pointer;
+}
+button:hover:not(:disabled) {
+	background: var(--focus-bg);
+}
+button:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+button.primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: white;
+}
+button.primary:hover {
+	background: color-mix(in srgb, var(--accent) 85%, black);
+}
+button.danger:hover {
+	color: var(--danger);
+}
+select {
+	font: inherit;
+	padding: 3px 4px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--surface);
+	color: var(--text);
+}
+.svelte-flow {
+	--xy-background-color: var(--bg);
+}
