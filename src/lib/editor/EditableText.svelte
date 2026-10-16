@@ -10,7 +10,8 @@
 	let editing = $state(false);
 	let draft = $state('');
 
-	function start() {
+	/** Switch to edit mode (also callable from outside via bind:this). */
+	export function start() {
 		draft = value;
 		editing = true;
 	}
@@ -34,6 +35,7 @@
 		bind:value={draft}
 		{placeholder}
 		use:focus
+		onclick={(e) => e.stopPropagation()}
 		onblur={() => finish(true)}
 		onkeydown={(e) => {
 			if (e.key === 'Enter') finish(true);

@@ -71,3 +71,13 @@ select {
 .svelte-flow {
 	--xy-background-color: var(--bg);
 }
+/* Dragging on the canvas shouldn't highlight text in the UI around it. */
+.app {
+	user-select: none;
+	-webkit-user-select: none;
+}
+.app input,
+.app textarea {
+	user-select: text;
+	-webkit-user-select: text;
+}

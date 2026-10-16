@@ -4,9 +4,30 @@ import type { BoardContent, Cardinality, KeyKind, PageDoc, RelationDoc, Row, Tab
 /** A4 landscape at 96 dpi. */
 export const PAGE_W = 1123;
 export const PAGE_H = 794;
+export const PAGE_MIN_W = 300;
+export const PAGE_MIN_H = 200;
 /** Space kept free between pages (also leaves room for the page header). */
 const PAGE_GAP = 80;
 const HISTORY_LIMIT = 200;
+
+/** Paper sizes in landscape at 96 dpi; portrait swaps width and height. */
+export const PAPER_SIZES = [
+	{ name: 'A4', w: 1123, h: 794 },
+	{ name: 'A3', w: 1587, h: 1123 },
+	{ name: 'A2', w: 2245, h: 1587 },
+	{ name: 'A1', w: 3179, h: 2245 }
+] as const;
+
+/** e.g. "A4 landscape", or "Custom" when the size matches no paper size. */
+export function paperLabel(width: number, height: number) {
+	for (const p of PAPER_SIZES) {
+		if (p.w === width && p.h === height) return `${p.name} landscape`;
+		if (p.h === width && p.w === height) return `${p.name} portrait`;
+	}
+	return 'Custom';
+}
+
+export type Tool = 'select' | 'hand' | 'table';
 
 export type PageData = { title: string };
 export type TableData = { title: string; rows: Row[] };
@@ -28,10 +49,9 @@ function toNodes(content: BoardContent): BoardNode[] {
 		id: p.id,
 		type: 'page',
 		position: { x: p.x, y: p.y },
-		width: PAGE_W,
-		height: PAGE_H,
+		width: p.width ?? PAGE_W,
+		height: p.height ?? PAGE_H,
 		data: { title: p.title },
-		dragHandle: '.page-drag',
 		zIndex: 0
 	}));
 	const pageIds = new Set(pages.map((p) => p.id));
@@ -64,8 +84,23 @@ function toEdges(content: BoardContent): RelationEdge[] {
 	}));
 }
 
-function overlaps(a: { x: number; y: number }, b: { x: number; y: number }) {
-	return Math.abs(a.x - b.x) < PAGE_W + PAGE_GAP && Math.abs(a.y - b.y) < PAGE_H + PAGE_GAP;
+type Rect = { x: number; y: number; width: number; height: number };
+
+const pageRect = (n: BoardNode): Rect => ({
+	x: n.position.x,
+	y: n.position.y,
+	width: n.width ?? PAGE_W,
+	height: n.height ?? PAGE_H
+});
+
+/** True when two pages are closer than PAGE_GAP. */
+export function overlaps(a: Rect, b: Rect) {
+	return (
+		a.x < b.x + b.width + PAGE_GAP &&
+		b.x < a.x + a.width + PAGE_GAP &&
+		a.y < b.y + b.height + PAGE_GAP &&
+		b.y < a.y + a.height + PAGE_GAP
+	);
 }
 
 export class Editor {
@@ -73,6 +108,13 @@ export class Editor {
 	edges = $state.raw<RelationEdge[]>([]);
 	canUndo = $state(false);
 	canRedo = $state(false);
+	tool = $state<Tool>('select');
+	/** Space held down: temporarily behave as the hand tool. */
+	spaceHeld = $state(false);
+
+	get mode(): Tool {
+		return this.spaceHeld ? 'hand' : this.tool;
+	}
 
 	#past: string[] = [];
 	#future: string[] = [];
@@ -95,7 +137,8 @@ export class Editor {
 		const tables: TableDoc[] = [];
 		for (const n of this.nodes) {
 			if (n.type === 'page') {
-				pages.push({ id: n.id, title: n.data.title, x: n.position.x, y: n.position.y });
+				const { width, height } = pageRect(n);
+				pages.push({ id: n.id, title: n.data.title, x: n.position.x, y: n.position.y, width, height });
 			} else if (n.type === 'table' && n.parentId) {
 				tables.push({
 					id: n.id,
@@ -159,13 +202,13 @@ export class Editor {
 	// ---- pages ----
 
 	addPage() {
-		const pages = this.nodes.filter((n) => n.type === 'page');
-		let position = { x: 0, y: 0 };
+		const pages = this.nodes.filter((n) => n.type === 'page').map(pageRect);
+		let rect: Rect = { x: 0, y: 0, width: PAGE_W, height: PAGE_H };
 		if (pages.length) {
-			const rightmost = pages.reduce((a, b) => (b.position.x > a.position.x ? b : a));
-			position = { x: rightmost.position.x + PAGE_W + PAGE_GAP, y: rightmost.position.y };
+			const rightmost = pages.reduce((a, b) => (b.x + b.width > a.x + a.width ? b : a));
+			rect = { ...rect, x: rightmost.x + rightmost.width + PAGE_GAP, y: rightmost.y };
 		}
-		position = this.#freeSpot(position, null);
+		const position = this.#freeSpot(rect, null);
 		const page: PageNode = {
 			id: uid(),
 			type: 'page',
@@ -173,7 +216,6 @@ export class Editor {
 			width: PAGE_W,
 			height: PAGE_H,
 			data: { title: `Page ${pages.length + 1}` },
-			dragHandle: '.page-drag',
 			zIndex: 0
 		};
 		// Pages go first so they stay before all children.
@@ -182,36 +224,58 @@ export class Editor {
 		return page;
 	}
 
-	/** After a page was dropped: push it out of any page it overlaps. */
+	/** After a page was dropped or resized: push it out of any page it overlaps. */
 	settlePage(id: string) {
 		const page = this.nodes.find((n) => n.id === id);
 		if (!page || page.type !== 'page') return;
-		const position = this.#freeSpot(page.position, id);
+		const position = this.#freeSpot(pageRect(page), id);
 		if (position.x !== page.position.x || position.y !== page.position.y) {
 			this.nodes = this.nodes.map((n) => (n.id === id ? { ...n, position } : n));
 		}
 	}
 
+	/** Would a page with this rect overlap another page? */
+	pageCollides(id: string, rect: Rect) {
+		return this.nodes.some((n) => n.type === 'page' && n.id !== id && overlaps(rect, pageRect(n)));
+	}
+
 	/** Find the closest position to `start` that doesn't overlap another page. */
-	#freeSpot(start: { x: number; y: number }, ignoreId: string | null) {
-		const others = this.nodes.filter((n) => n.type === 'page' && n.id !== ignoreId).map((n) => n.position);
-		const free = (p: { x: number; y: number }) => !others.some((o) => overlaps(p, o));
-		if (free(start)) return start;
+	#freeSpot(start: Rect, ignoreId: string | null) {
+		const others = this.nodes.filter((n) => n.type === 'page' && n.id !== ignoreId).map(pageRect);
+		const free = (p: { x: number; y: number }) => !others.some((o) => overlaps({ ...start, ...p }, o));
+		if (free(start)) return { x: start.x, y: start.y };
 		// Candidate spots: snapped against every edge of every other page; pick the nearest free one.
 		const candidates: { x: number; y: number }[] = [];
 		for (const o of others) {
 			candidates.push(
-				{ x: o.x + PAGE_W + PAGE_GAP, y: start.y },
-				{ x: o.x - PAGE_W - PAGE_GAP, y: start.y },
-				{ x: start.x, y: o.y + PAGE_H + PAGE_GAP },
-				{ x: start.x, y: o.y - PAGE_H - PAGE_GAP }
+				{ x: o.x + o.width + PAGE_GAP, y: start.y },
+				{ x: o.x - start.width - PAGE_GAP, y: start.y },
+				{ x: start.x, y: o.y + o.height + PAGE_GAP },
+				{ x: start.x, y: o.y - start.height - PAGE_GAP }
 			);
 		}
 		const dist = (p: { x: number; y: number }) => Math.hypot(p.x - start.x, p.y - start.y);
 		const best = candidates.filter(free).sort((a, b) => dist(a) - dist(b))[0];
 		if (best) return best;
-		const maxX = Math.max(...others.map((o) => o.x));
-		return { x: maxX + PAGE_W + PAGE_GAP, y: start.y };
+		const maxRight = Math.max(...others.map((o) => o.x + o.width));
+		return { x: maxRight + PAGE_GAP, y: start.y };
+	}
+
+	/**
+	 * Resize a page to a paper size. Returns false when its tables wouldn't fit.
+	 * `contentSize` is the extent of the page's tables (right/bottom edge, page-relative).
+	 */
+	setPageSize(id: string, width: number, height: number, contentSize: { width: number; height: number }) {
+		if (width < contentSize.width || height < contentSize.height) return false;
+		this.nodes = this.nodes.map((n) => (n.id === id ? { ...n, width, height } : n));
+		this.settlePage(id);
+		this.commit();
+		return true;
+	}
+
+	selectAll() {
+		this.nodes = this.nodes.map((n) => ({ ...n, selected: true }));
+		this.edges = this.edges.map((e) => ({ ...e, selected: true }));
 	}
 
 	renamePage(id: string, title: string) {
@@ -220,7 +284,8 @@ export class Editor {
 
 	// ---- tables ----
 
-	addTable(pageId: string) {
+	/** Add a table to a page; `at` is page-relative (defaults to a cascading spot near the top-left). */
+	addTable(pageId: string, at?: { x: number; y: number }) {
 		const count = this.nodes.filter((n) => n.type === 'table' && n.parentId === pageId).length;
 		const offset = (count % 10) * 30;
 		const table: TableNode = {
@@ -228,7 +293,7 @@ export class Editor {
 			type: 'table',
 			parentId: pageId,
 			extent: 'parent',
-			position: { x: 40 + offset, y: 40 + offset },
+			position: at ?? { x: 40 + offset, y: 40 + offset },
 			data: { title: 'new_table', rows: [{ id: uid(), key: 'PK', name: 'id', type: 'integer' }] },
 			dragHandle: '.table-drag',
 			zIndex: 1,

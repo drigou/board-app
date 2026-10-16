@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { SvelteFlowProvider } from '@xyflow/svelte';
 	import { page } from '$app/state';
 	import { boards } from '$lib/boards.svelte';
 	import BoardCanvas from '$lib/editor/BoardCanvas.svelte';
+	import EditableText from '$lib/editor/EditableText.svelte';
 	import { createSaver } from '$lib/saver.svelte';
 	import type { Board } from '$lib/types';
 
@@ -35,13 +37,15 @@
 {:else if board && meta}
 	<div class="title">
 		<span>{meta.emoji}</span>
-		<strong>{meta.name}</strong>
+		<strong><EditableText value={meta.name} onsave={(name) => boards.update(meta.id, { name })} /></strong>
 		<span class="status {saver.status}">
 			{saver.status === 'saving' ? 'Saving…' : saver.status === 'error' ? 'Save failed — retrying' : 'Saved ✓'}
 		</span>
 	</div>
 	{#key board.id}
-		<BoardCanvas content={board.content} onchange={(content) => saver.save(board!.id, content)} />
+		<SvelteFlowProvider>
+			<BoardCanvas content={board.content} onchange={(content) => saver.save(board!.id, content)} />
+		</SvelteFlowProvider>
 	{/key}
 {:else}
 	<p class="message">Loading…</p>

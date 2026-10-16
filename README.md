@@ -54,14 +54,17 @@ For local dev, expose the database by adding `ports: ["127.0.0.1:5432:5432"]` to
 
 | Action | How |
 | --- | --- |
+| Select / Hand tool | Top bar, or `V` / `H`; hold `Space` for Hand temporarily |
+| Select several | Drag a box on the background, Shift+click, or `Ctrl+A` |
 | New page | `+ Page` (top-left) |
-| Move a page | Drag its title |
-| Rename page / table / board | Double-click the name |
-| Add table | `+ Table` in the page header |
+| Move a page | Select tool: drag the page (or its title) |
+| Resize a page | Select it and drag its edges/corners, or pick a paper size in its header |
+| Rename page / table / board | Double-click the name (boards also have ✏️) |
+| Add table | Table tool in the left bar, then click on a page (`Esc` cancels) |
 | Add / delete a row | `+` under the table / `×` on hover |
 | Set key | Click the key cell: none → PK → FK → PK+FK |
 | Draw a relation | Drag from a dot on a row's left/right edge to another row on the same page |
-| Cardinality | Click a relation; pick each end at the top |
+| Cardinality | Click a relation; pick each end at the bottom |
 | Delete | Select and press `Delete` / `Backspace` |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` |
-| Zoom / pan | Mouse wheel / drag the background |
+| Zoom / pan | Mouse wheel / Hand tool, Space+drag or middle mouse; click the zoom % to fit |

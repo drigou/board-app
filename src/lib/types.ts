@@ -13,6 +13,9 @@ export interface PageDoc {
 	title: string;
 	x: number;
 	y: number;
+	/** Page size in px; missing in boards saved before pages were resizable (= A4 landscape). */
+	width?: number;
+	height?: number;
 }
 
 export interface TableDoc {

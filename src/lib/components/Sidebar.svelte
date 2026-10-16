@@ -9,6 +9,7 @@
 
 	let search = $state('');
 	let pickerFor = $state<string | null>(null);
+	const nameEditors: Record<string, EditableText> = {};
 	let now = $state(Date.now());
 
 	$effect(() => {
@@ -55,11 +56,18 @@
 						/>
 					{/if}
 				</div>
-				<a href="/board/{board.id}">
-					<EditableText class="name" value={board.name} onsave={(name) => boards.update(board.id, { name })} />
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<div class="info" role="link" tabindex="-1" onclick={() => goto(`/board/${board.id}`)}>
+					<EditableText
+						bind:this={nameEditors[board.id]}
+						class="name"
+						value={board.name}
+						onsave={(name) => boards.update(board.id, { name })}
+					/>
 					<span class="time">{timeAgo(board.updated_at, now)}</span>
-				</a>
-				<button class="delete" title="Delete board" onclick={() => remove(board.id, board.name)}>🗑</button>
+				</div>
+				<button class="action" title="Rename board" onclick={() => nameEditors[board.id]?.start()}>✏️</button>
+				<button class="action" title="Delete board" onclick={() => remove(board.id, board.name)}>🗑</button>
 			</li>
 		{:else}
 			<li class="empty">{boards.loaded ? (search ? 'No matching boards' : 'No boards yet') : 'Loading…'}</li>
@@ -137,16 +145,15 @@
 	.emoji:hover {
 		background: var(--surface);
 	}
-	a {
+	.info {
 		flex: 1;
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		color: inherit;
-		text-decoration: none;
 		padding: 4px 0;
+		cursor: pointer;
 	}
-	a :global(.name) {
+	.info :global(.name) {
 		font-size: 14px;
 		display: block;
 	}
@@ -154,14 +161,14 @@
 		font-size: 11px;
 		color: var(--muted);
 	}
-	.delete {
+	.action {
 		visibility: hidden;
 		border: none;
 		background: transparent;
 		cursor: pointer;
 		padding: 4px;
 	}
-	li:hover .delete {
+	li:hover .action {
 		visibility: visible;
 	}
 </style>

@@ -6,8 +6,9 @@ A web app for designing logical data models on boards. Single user, runs locally
 
 - **Board**: top-level entity. Has a name, an emoji icon and a "last edited" timestamp.
   Boards are listed in a side pane (sorted by last edited) with a search box on board name.
-- **Page**: an A4 landscape frame on a board's infinite, zoomable canvas. Has a title.
-  Pages can be positioned anywhere but may not overlap (they snap apart when dropped on each other).
+- **Page**: a frame on a board's infinite, zoomable canvas. Has a title. New pages are A4 landscape;
+  pages can be resized by dragging (when selected) or set to A4–A1 portrait/landscape. A page can't
+  shrink smaller than its tables. Pages can be positioned anywhere but may not overlap (they snap apart).
 - **Table**: a design figure that lives on exactly one page and cannot leave it.
   It has a title and rows. Each row has three cells:
   1. **Key**: click cycles `blank → PK → FK → PK+FK` (set manually; composite PKs = several PK rows).
@@ -21,8 +22,12 @@ A web app for designing logical data models on boards. Single user, runs locally
 
 ## Interaction
 
-- Mouse wheel zooms; dragging the empty canvas (or a page body) pans.
-- Pages are dragged by their header. Tables are dragged by their title bar.
+- Top bar: **Select** (arrow, `V`) and **Hand** (`H`, or hold `Space`) tools, undo/redo, zoom %.
+  - Select: drag on the background draws a selection box; click/drag pages and tables;
+    Shift+click adds to the selection; `Ctrl+A` selects everything. Middle mouse pans.
+  - Hand: dragging anywhere pans; nothing can be selected or edited.
+- Left bar: object tools (for now **Table**): pick it, then click on a page to place the table.
+- Mouse wheel zooms in every mode. Tables are dragged by their title bar.
 - Undo / redo per board: `Ctrl+Z` / `Ctrl+Shift+Z` (or `Ctrl+Y`).
 - `Delete` / `Backspace` deletes the selection. Deleting a board or page asks for confirmation;
   tables, rows and relations do not (use undo).
