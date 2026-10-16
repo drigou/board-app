@@ -20,6 +20,10 @@ A web app for designing logical data models on boards. Single user, runs locally
   one, zero-or-one, one-or-many, zero-or-many. New relations default to many-to-one.
   Drawing a relation never changes key badges or creates rows.
 
+- **Import / export**: JSON in a documented format (`static/board-import.schema.json`), by name
+  (`"table.column"`), positions optional (auto-layout). Import validates everything first and is one undo
+  step; export produces the same format for a page or the whole board.
+
 ## Interaction
 
 - Top bar: **Select** (arrow, `V`) and **Hand** (`H`, or hold `Space`) tools, undo/redo, zoom %.

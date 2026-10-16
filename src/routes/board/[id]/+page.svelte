@@ -44,7 +44,7 @@
 	</div>
 	{#key board.id}
 		<SvelteFlowProvider>
-			<BoardCanvas content={board.content} onchange={(content) => saver.save(board!.id, content)} />
+			<BoardCanvas content={board.content} name={meta.name} onchange={(content) => saver.save(board!.id, content)} />
 		</SvelteFlowProvider>
 	{/key}
 {:else}

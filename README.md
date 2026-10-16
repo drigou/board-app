@@ -40,6 +40,40 @@ docker run --rm --network host node:22-alpine sh -c "wget -qO- https://registry.
 
   The build log shows `Extra CA certificates: 1` when it's picked up.
 
+## Import / export JSON
+
+- **Import** (left bar): paste JSON, drop or pick a `.json` file. The app checks it first and lists every
+  problem; nothing is imported unless it's fully valid. One `Ctrl+Z` undoes the whole import.
+- **Export ▾** (top-left): the whole board or one page, in the same format, so you can re-import it.
+- Format: [`static/board-import.schema.json`](static/board-import.schema.json) (JSON Schema, also served at
+  <http://localhost:3000/board-import.schema.json>). Example: [`examples/webshop.json`](examples/webshop.json).
+- **🤖 Copy AI prompt** in the import dialog copies instructions + the schema; paste it into ChatGPT/Claude,
+  describe your model, and import the answer.
+
+Minimal example:
+
+```json
+{
+  "page": "Sales",
+  "tables": [
+    { "name": "customer", "columns": [ { "name": "id", "type": "integer", "key": "PK" } ] },
+    { "name": "order", "columns": [
+      { "name": "id", "type": "integer", "key": "PK" },
+      { "name": "customer_id", "type": "integer", "key": "FK" }
+    ]}
+  ],
+  "relations": [ { "from": "order.customer_id", "to": "customer.id" } ]
+}
+```
+
+Rules worth knowing:
+- `key` is `"PK"`, `"FK"` or `"PK+FK"` (or use `"pk": true` / `"fk": true`).
+- Relations are `"table.column"` on the same page; cardinality defaults to many (`from`) to one (`to`).
+  Short forms `1`, `0..1`, `1..*`, `0..*` work too.
+- Tables without `x`/`y` are laid out automatically; the page gets the smallest paper size that fits.
+- Several pages: `{ "pages": [ { "page": "…", "tables": […] }, … ] }` (always imported as new pages).
+- Importing into an existing page with tables of the same name asks: skip, replace or add copies.
+
 ## Develop
 
 ```bash

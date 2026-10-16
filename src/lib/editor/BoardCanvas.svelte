@@ -19,10 +19,16 @@
 	import PageNode from './PageNode.svelte';
 	import RelationEdge from './RelationEdge.svelte';
 	import TableNode from './TableNode.svelte';
+	import ImportDialog from '$lib/import/ImportDialog.svelte';
+	import { downloadJson, exportJson } from '$lib/import/export';
 	import { setEditor } from './context';
 	import { Editor, PAGE_H, PAGE_W, type Tool } from './editor.svelte';
 
-	let { content, onchange }: { content: BoardContent; onchange: (content: BoardContent) => void } = $props();
+	let {
+		content,
+		name,
+		onchange
+	}: { content: BoardContent; name: string; onchange: (content: BoardContent) => void } = $props();
 
 	// The canvas is re-created per board (see the {#key} in the page), so reading `content` once is intended.
 	// svelte-ignore state_referenced_locally
@@ -43,6 +49,8 @@
 	const TABLE_W = 320;
 
 	let connecting = $state(false);
+	let importing = $state<{ board: BoardContent; target: string } | null>(null);
+	let exportOpen = $state(false);
 	let zoom = $state(1);
 	let hint = $state('');
 	let hintTimer: ReturnType<typeof setTimeout> | undefined;
@@ -77,7 +85,7 @@
 	const isTyping = (e: Event) => !!(e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]');
 
 	function onkeydown(e: KeyboardEvent) {
-		if (isTyping(e)) return;
+		if (isTyping(e) || importing) return;
 		const key = e.key.toLowerCase();
 		if (e.ctrlKey || e.metaKey) {
 			if (key === 'z' && !e.shiftKey) editor.undo();
@@ -121,6 +129,23 @@
 		};
 		editor.addTable(page.id, at);
 		editor.tool = 'select';
+	}
+
+	function openImport() {
+		// Deselect so keys pressed in the dialog can't delete anything on the canvas.
+		editor.tool = 'select';
+		editor.nodes = editor.nodes.map((n) => (n.selected && n.type !== 'page' ? { ...n, selected: false } : n));
+		editor.edges = editor.edges.map((e) => (e.selected ? { ...e, selected: false } : e));
+		const selectedPage = editor.nodes.find((n) => n.type === 'page' && n.selected);
+		editor.nodes = editor.nodes.map((n) => (n.selected ? { ...n, selected: false } : n));
+		importing = { board: editor.snapshot(), target: selectedPage?.id ?? 'new' };
+	}
+
+	function exportTo(pageId?: string) {
+		exportOpen = false;
+		const board = editor.snapshot();
+		const page = board.pages.find((p) => p.id === pageId);
+		downloadJson(exportJson(board, pageId), `${name}${page ? ` - ${page.title}` : ''}.json`);
 	}
 
 	function onbeforeconnect(c: Connection) {
@@ -185,6 +210,19 @@
 		<Panel position="top-left">
 			<div class="bar">
 				<button onclick={() => editor.addPage()}>+ Page</button>
+				<div class="menu-wrap">
+					<button onclick={() => (exportOpen = !exportOpen)} aria-expanded={exportOpen}>Export ▾</button>
+					{#if exportOpen}
+						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+						<div class="menu-backdrop" onclick={() => (exportOpen = false)}></div>
+						<div class="menu" role="menu">
+							<button role="menuitem" onclick={() => exportTo()}>Whole board (JSON)</button>
+							{#each editor.nodes.filter((n) => n.type === 'page') as p (p.id)}
+								<button role="menuitem" onclick={() => exportTo(p.id)}>Page "{p.data.title}"</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
 			</div>
 		</Panel>
 
@@ -217,6 +255,11 @@
 				>
 					<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M3 14.5h18M9 9v11" /></svg>
 					<span>Table</span>
+				</button>
+				<span class="hdivider"></span>
+				<button class="icon tool" title="Import tables and relations from JSON" aria-label="Import JSON" onclick={openImport}>
+					<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4" /><path d="M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" /></svg>
+					<span>Import</span>
 				</button>
 			</div>
 		</Panel>
@@ -254,6 +297,19 @@
 		{/if}
 	</SvelteFlow>
 </div>
+
+{#if importing}
+	<ImportDialog
+		board={importing.board}
+		defaultTarget={importing.target}
+		onclose={() => (importing = null)}
+		onimport={(plan) => {
+			editor.applyImport(plan);
+			importing = null;
+			setTimeout(() => flow.fitView({ padding: 0.2, duration: 300 }), 50);
+		}}
+	/>
+{/if}
 
 <style>
 	.canvas {
@@ -320,6 +376,39 @@
 	}
 	.tool span {
 		font-size: 10px;
+	}
+	.hdivider {
+		height: 1px;
+		align-self: stretch;
+		margin: 2px 4px;
+		background: var(--border);
+	}
+	.menu-wrap {
+		position: relative;
+	}
+	.menu-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 9;
+	}
+	.menu {
+		position: absolute;
+		z-index: 10;
+		top: calc(100% + 6px);
+		left: 0;
+		min-width: 200px;
+		display: flex;
+		flex-direction: column;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 4px;
+		box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+	}
+	.menu button {
+		border: none;
+		text-align: left;
+		white-space: nowrap;
 	}
 	.divider {
 		width: 1px;

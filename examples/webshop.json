@@ -1,0 +1,32 @@
+{
+  "$schema": "../static/board-import.schema.json",
+  "page": "Webshop",
+  "tables": [
+    { "name": "customer", "columns": [
+      { "name": "id", "type": "integer", "key": "PK" },
+      { "name": "email", "type": "varchar(255)" },
+      { "name": "name", "type": "varchar(100)" }
+    ]},
+    { "name": "order", "columns": [
+      { "name": "id", "type": "integer", "key": "PK" },
+      { "name": "customer_id", "type": "integer", "key": "FK" },
+      { "name": "ordered_at", "type": "timestamp" }
+    ]},
+    { "name": "product", "columns": [
+      { "name": "id", "type": "integer", "key": "PK" },
+      { "name": "name", "type": "varchar(100)" },
+      { "name": "price", "type": "decimal(10,2)" }
+    ]},
+    { "name": "order_line", "columns": [
+      { "name": "order_id", "type": "integer", "key": "PK+FK" },
+      { "name": "line_no", "type": "integer", "pk": true },
+      { "name": "product_id", "type": "integer", "fk": true },
+      { "name": "quantity", "type": "integer" }
+    ]}
+  ],
+  "relations": [
+    { "from": "order.customer_id", "to": "customer.id" },
+    { "from": "order_line.order_id", "to": "order.id", "fromCardinality": "1..*", "toCardinality": "1" },
+    { "from": "order_line.product_id", "to": "product.id" }
+  ]
+}

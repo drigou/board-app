@@ -273,6 +273,60 @@ export class Editor {
 		return true;
 	}
 
+	/** Apply an import (see $lib/import/plan) as a single undo step. */
+	applyImport(plan: {
+		newPages: { id: string; title: string; width: number; height: number; x?: number; y?: number }[];
+		resizePages: { id: string; width: number; height: number }[];
+		tables: TableDoc[];
+		relations: RelationDoc[];
+		removeTableIds: string[];
+	}) {
+		const removed = new Set(plan.removeTableIds);
+		const resize = new Map(plan.resizePages.map((r) => [r.id, r]));
+		let nodes = this.nodes
+			.filter((n) => !removed.has(n.id))
+			.map((n) => {
+				const r = resize.get(n.id);
+				return { ...n, selected: false, ...(r ? { width: r.width, height: r.height } : {}) } as BoardNode;
+			});
+		this.edges = this.edges.filter((e) => !removed.has(e.source) && !removed.has(e.target));
+
+		// New pages: at their own position if given, else to the right of everything; never overlapping.
+		const newPages: PageNode[] = [];
+		for (const p of plan.newPages) {
+			const others = [...nodes, ...newPages].filter((n) => n.type === 'page').map(pageRect);
+			const right = others.length ? Math.max(...others.map((o) => o.x + o.width)) + PAGE_GAP : 0;
+			const top = others.length ? Math.min(...others.map((o) => o.y)) : 0;
+			const rect = { x: p.x ?? right, y: p.y ?? top, width: p.width, height: p.height };
+			this.nodes = [...newPages, ...nodes];
+			const position = this.#freeSpot(rect, null);
+			newPages.push({
+				id: p.id,
+				type: 'page',
+				position,
+				width: p.width,
+				height: p.height,
+				data: { title: p.title },
+				zIndex: 0
+			});
+		}
+		const tableNodes: TableNode[] = plan.tables.map((t) => ({
+			id: t.id,
+			type: 'table',
+			parentId: t.pageId,
+			extent: 'parent',
+			position: { x: t.x, y: t.y },
+			data: { title: t.title, rows: t.rows },
+			dragHandle: '.table-drag',
+			zIndex: 1,
+			selected: true
+		}));
+		this.nodes = [...newPages, ...nodes, ...tableNodes];
+		for (const r of plan.resizePages) this.settlePage(r.id);
+		this.edges = [...this.edges, ...toEdges({ version: 1, pages: [], tables: [], relations: plan.relations })];
+		this.commit();
+	}
+
 	selectAll() {
 		this.nodes = this.nodes.map((n) => ({ ...n, selected: true }));
 		this.edges = this.edges.map((e) => ({ ...e, selected: true }));
