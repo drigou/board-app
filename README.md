@@ -20,6 +20,18 @@ Open <http://localhost:3000>.
 - Stop: `docker compose down` (data is kept). Update after pulling changes: `docker compose up -d --build`.
 - Backup: `docker compose exec db pg_dump -U board board > backup.sql`.
 
+### Build fails at `npm ci` ("Exit handler never called")
+
+The build container can't reach the npm registry. Check from WSL:
+
+```bash
+docker run --rm --network host node:22-alpine sh -c "wget -qO- https://registry.npmjs.org/svelte | head -c 80"
+```
+
+- No output / timeout → Docker has no internet inside containers (DNS, VPN or corporate proxy).
+  Try restarting Docker / WSL (`wsl --shutdown` from Windows), and disconnect from VPN while building.
+- Certificate error → a corporate proxy inspects HTTPS; npm needs that company root certificate.
+
 ## Develop
 
 ```bash

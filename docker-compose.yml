@@ -15,7 +15,10 @@ services:
       retries: 30
 
   app:
-    build: .
+    build:
+      context: .
+      # Use the host's network while building: avoids DNS problems in Docker on WSL.
+      network: host
     restart: unless-stopped
     depends_on:
       db:
